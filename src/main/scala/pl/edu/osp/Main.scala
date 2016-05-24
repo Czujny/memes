@@ -5,6 +5,7 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshallers.xml.ScalaXmlSupport._
+import akka.http.scaladsl.model.Multipart
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
@@ -14,7 +15,10 @@ import spray.json._
 import akka.http.scaladsl.model.StatusCodes.MovedPermanently
 import java.sql.DriverManager
 import java.util.Date
-
+import scala.concurrent.ExecutionContext.Implicits.global
+import java.io.{FileOutputStream, ByteArrayOutputStream, File}
+import akka.http.scaladsl.model.{StatusCodes, Multipart, StatusCode, HttpResponse}
+import akka.util.ByteString
 
 object Main extends App {
   val serviceName = "Memes4U"
@@ -29,7 +33,7 @@ object Main extends App {
   val route =
     get {
       pathSingleSlash {
-        val ask = baza.prepareStatement( """select * from MEMES where ID <= 5""")
+        val ask = baza.prepareStatement( """select * from MEMES1 where ID <= 5""")
         val a = ask.executeQuery()
         complete {
           <html>
@@ -40,16 +44,23 @@ object Main extends App {
               <center>
                 <font size="7">Memes</font>
               </center>
-              <hr color="red"/>
-              <form action="Szukaj" method="post">
+              <hr color="black"/>
+              <form action="szukaj" name="Szukaj" method="post">
                 <input type="text" name="Szukaj" value="Szukaj"/>
               </form>
-              <label for="kategoria">Wybierz kategorie</label>
-              <select id="kategoria">
-                <option value="Shopenhauer">Shopenhauer</option>
-                <option value="Medieval">Sredniowieczne</option>
-                <option value="Komunizm">Komunistyczne</option>
-            </select>
+              <form action="kategoria" name="kategoria" method="post">
+                <select name="kategoria">
+                  <option value="Shopenhauer">Shopenhauer</option>
+                  <option value="Medieval">Sredniowieczne</option>
+                  <option value="Komunizm">Komunistyczne</option>
+                </select>
+                <input type="submit" value="OK"/>
+              </form>
+              <div align="right">
+                <form action="/upload">
+                  <input type="submit" value="Upload"/>
+                </form>
+              </div>
               {if (a.next() == true) {
               <center>
                 <p>
@@ -129,134 +140,168 @@ object Main extends App {
             </body>
           </html>
         }
-      } ~
-      path("strona" / IntNumber){ (numer) =>
-        val ask = baza.prepareStatement( """select * from MEMES where ID <= ? and ID >= ?""")
-        if(numer==0){
-          ask.setInt(1, numer+6)
-          ask.setInt(2, numer+1)
-        }else{
-          ask.setInt(1, numer+11)
-          ask.setInt(2, numer+5)
-        }
-        val a = ask.executeQuery()
-        complete {
-          <html>
-            <head>
-              <title>Memes4U</title>
-            </head>
-            <body>
-              <center>
-                <font size="7">Memes</font>
-              </center>
-              <hr color="red"/>
-              <form action="Szukaj" method="post">
-                <input type="text" name="Szukaj" value="Szukaj"/>
-              </form>
-              <label for="kategoria">Wybierz kategorie</label>
-              <select id="kategoria">
-                <option value="Shopenhauer">Shopenhauer</option>
-                <option value="Medieval">Sredniowieczne</option>
-                <option value="Komunizm">Komunistyczne</option>
-                </select>
-                {if (a.next() == true){
-              <center>
-                <p>
-                  <font size="4">
-                    {a.getString("TYTUL")}
-                  </font>
-                </p>
-                <p>
-                  <img src={"img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
-                </p>
-                <p>
-                  <img src="img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
-                </p>
-              </center>
-            }}{if (a.next() == true) {
-              <center>
-                <p>
-                  <font size="4">
-                    {a.getString("TYTUL")}
-                  </font>
-                </p>
-                <p>
-                  <img src={"img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
-                </p>
-                <p>
-                  <img src="img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
-                </p>
-              </center>
-            }}{if (a.next() == true) {
-              <center>
-                <p>
-                  <font size="4">
-                    {a.getString("TYTUL")}
-                  </font>
-                </p>
-                <p>
-                  <img src={"img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
-                </p>
-                <p>
-                  <img src="img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
-                </p>
-              </center>
-            }}{if (a.next() == true) {
-              <center>
-                <p>
-                  <font size="4">
-                    {a.getString("TYTUL")}
-                  </font>
-                </p>
-                <p>
-                  <img src={"img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
-                </p>
-                <p>
-                  <img src="img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
-                </p>
-              </center>
-            }}{if (a.next() == true) {
-              <center>
-                <p>
-                  <font size="4">
-                    {a.getString("TYTUL")}
-                  </font>
-                </p>
-                <p>
-                  <img src={"img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
-                </p>
-                <p>
-                  <img src="img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
-                </p>
-
-              </center>
-            }}<center>
-              {if(numer!=0) {
-                <form action={"/strona/" + (numer - 1)}>
-                  <input type="submit" value="Poprzednia strona"/>
-                </form>
-              }}
-              {if(a.next==true) {
-                <form action={"/strona/" + (numer + 1)}>
-                  <input type="submit" value="Nastepna strona"/>
-                </form>
-              }}
-            </center>
-            </body>
-          </html>
-        }
       }~
+        path("strona" / IntNumber) { (numer) =>
+          val ask = baza.prepareStatement( """select * from MEMES1 where ID <= ? and ID >= ?""")
+          if (numer == 0) {
+            ask.setInt(1, numer + 6)
+            ask.setInt(2, numer + 1)
+          } else {
+            ask.setInt(1, numer + 11)
+            ask.setInt(2, numer + 5)
+          }
+          val a = ask.executeQuery()
+          complete {
+            <html>
+              <head>
+                <title>Memes4U</title>
+              </head>
+              <body>
+                <center>
+                  <font size="7">Memes</font>
+                </center>
+                <hr color="black"/>
+                <form action="/szukaj" name="Szukaj" method="post">
+                  <input type="text" name="Szukaj" value="Szukaj"/>
+                </form>
+                <form action="/kategoria" name="kategoria" method="post">
+                  <select name="kategoria">
+                    <option value="Shopenhauer">Shopenhauer</option>
+                    <option value="Medieval">Sredniowieczne</option>
+                    <option value="Komunizm">Komunistyczne</option>
+                  </select>
+                  <input type="submit" value="OK"/>
+                </form>
+                <div align="right">
+                  <form action="/upload">
+                    <input type="submit" value="Upload"/>
+                  </form>
+                </div>{if (a.next() == true) {
+                <center>
+                  <p>
+                    <font size="4">
+                      {a.getString("TYTUL")}
+                    </font>
+                  </p>
+                  <p>
+                    <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                  </p>
+                  <p>
+                    <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                  </p>
+                </center>
+              }}{if (a.next() == true) {
+                <center>
+                  <p>
+                    <font size="4">
+                      {a.getString("TYTUL")}
+                    </font>
+                  </p>
+                  <p>
+                    <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                  </p>
+                  <p>
+                    <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                  </p>
+                </center>
+              }}{if (a.next() == true) {
+                <center>
+                  <p>
+                    <font size="4">
+                      {a.getString("TYTUL")}
+                    </font>
+                  </p>
+                  <p>
+                    <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                  </p>
+                  <p>
+                    <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                  </p>
+                </center>
+              }}{if (a.next() == true) {
+                <center>
+                  <p>
+                    <font size="4">
+                      {a.getString("TYTUL")}
+                    </font>
+                  </p>
+                  <p>
+                    <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                  </p>
+                  <p>
+                    <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                  </p>
+                </center>
+              }}{if (a.next() == true) {
+                <center>
+                  <p>
+                    <font size="4">
+                      {a.getString("TYTUL")}
+                    </font>
+                  </p>
+                  <p>
+                    <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                  </p>
+                  <p>
+                    <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                  </p>
+
+                </center>
+              }}<center>
+                {if (numer != 0) {
+                  <form action={"/strona/" + (numer - 1)}>
+                    <input type="submit" value="Poprzednia strona"/>
+                  </form>
+                }}{if (a.next == true) {
+                  <form action={"/strona/" + (numer + 1)}>
+                    <input type="submit" value="Nastepna strona"/>
+                  </form>
+                }}
+              </center>
+              </body>
+            </html>
+          }
+        } ~
+        path("upload") {
+          complete {
+            <html>
+              <head>
+                <title>Memes4U</title>
+              </head>
+              <body>
+                <form action="plik" enctype="multipart/form-data" method="post">
+                  <p>Wpisz tytuł:<input type="text" name="Tytul"/>
+                </p>
+                  <p>Wybierz kategorię:
+                    <select name="kategoria">
+                      <option value="Shopenhauer">Shopenhauer</option>
+                      <option value="Medieval">Sredniowieczne</option>
+                      <option value="Komunizm">Komunistyczne</option>
+                      <option value="Other">Inne</option>
+                    </select>
+                  </p>
+                <p>
+                  <input type="file" name="plik"/>
+                </p>
+                <p>
+                  <input type="submit" value="Upload"/>
+                </p>
+              </form>
+              </body>
+            </html>
+          }
+        } ~
         pathPrefix("img") {
           getFromResourceDirectory("img")
         }
-    }~
+    } ~
       post {
-        (path("Szukaj") & formFields('Szukaj.as[String])) { (Szukaj) => {
+        (path("szukaj") & formFields('Szukaj.as[String])) { (Szukaj) => {
           val wyszukaj = Szukaj
           var wyszukane = "img/"
           var kebab = 0
           var brukselka = 0
-          val ask = baza.prepareStatement( """select NAZWA_PLIKU, KEBAB, BRUKSELKA from MEMES where TYTUL=?""")
+          val ask = baza.prepareStatement( """select NAZWA_PLIKU, KEBAB, BRUKSELKA from MEMES1 where TYTUL=?""")
           ask.setString(1, wyszukaj)
           val a = ask.executeQuery()
           while (a.next()) {
@@ -274,10 +319,23 @@ object Main extends App {
                 <center>
                   <font size="7">Memes</font>
                 </center>
-                <hr color="red"/>
-                <form action="Szukaj" method="post">
+                <hr color="black"/>
+                <form action="szukaj" name="Szukaj" method="post">
                   <input type="text" name="Szukaj" value="Szukaj"/>
                 </form>
+                <form action="kategoria" name="kategoria" method="post">
+                  <select name="kategoria">
+                    <option value="Shopenhauer">Shopenhauer</option>
+                    <option value="Medieval">Sredniowieczne</option>
+                    <option value="Komunizm">Komunistyczne</option>
+                  </select>
+                  <input type="submit" value="OK"/>
+                </form>
+                <div align="right">
+                  <form action="/upload">
+                    <input type="submit" value="Upload"/>
+                  </form>
+                </div>
                 <center>
                   <p>
                     <font size="4">
@@ -294,6 +352,9 @@ object Main extends App {
                     <img src="img/dislike.jpg" style="width:25px;height:25px"/>{brukselka}
                   </button>
                   </p>
+                  <form action="/">
+                    <input type="submit" value="Powrot"/>
+                  </form>
                 </center>
               </body>
             </html>
@@ -316,8 +377,159 @@ object Main extends App {
             </html>
           }
         }
-        }
+        } ~
+          (path("kategoria") & formFields('kategoria.as[String])) { (kategoria) => {
+            val ask = baza.prepareStatement( """select TYTUL, NAZWA_PLIKU, KEBAB, BRUKSELKA from MEMES1 where KATEGORIA=?""")
+            ask.setString(1, kategoria)
+            val a = ask.executeQuery()
+            complete {
+              <html>
+                <head>
+                  <title>Memes4U</title>
+                </head>
+                <body>
+                  <center>
+                    <font size="7">Memes</font>
+                  </center>
+                  <hr color="black"/>
+                  <form action="/szukaj" name="Szukaj" method="post">
+                    <input type="text" name="Szukaj" value="Szukaj"/>
+                  </form>
+                  <form action="kategoria" name="kategoria" method="post">
+                    <select name="kategoria">
+                      <option value="Shopenhauer">Shopenhauer</option>
+                      <option value="Medieval">Sredniowieczne</option>
+                      <option value="Komunizm">Komunistyczne</option>
+                    </select>
+                    <input type="submit" value="OK"/>
+                  </form>
+                  <div align="right">
+                    <form action="/upload">
+                      <input type="submit" value="Upload"/>
+                    </form>
+                  </div>{if (a.next() == true) {
+                  <center>
+                    <p>
+                      <font size="4">
+                        {a.getString("TYTUL")}
+                      </font>
+                    </p>
+                    <p>
+                      <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                    </p>
+                    <p>
+                      <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                    </p>
+                  </center>
+                }}{if (a.next() == true) {
+                  <center>
+                    <p>
+                      <font size="4">
+                        {a.getString("TYTUL")}
+                      </font>
+                    </p>
+                    <p>
+                      <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                    </p>
+                    <p>
+                      <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                    </p>
+                  </center>
+                }}{if (a.next() == true) {
+                  <center>
+                    <p>
+                      <font size="4">
+                        {a.getString("TYTUL")}
+                      </font>
+                    </p>
+                    <p>
+                      <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                    </p>
+                    <p>
+                      <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                    </p>
+                  </center>
+                }}{if (a.next() == true) {
+                  <center>
+                    <p>
+                      <font size="4">
+                        {a.getString("TYTUL")}
+                      </font>
+                    </p>
+                    <p>
+                      <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                    </p>
+                    <p>
+                      <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                    </p>
+                  </center>
+                }}{if (a.next() == true) {
+                  <center>
+                    <p>
+                      <font size="4">
+                        {a.getString("TYTUL")}
+                      </font>
+                    </p>
+                    <p>
+                      <img src={"/img/" + a.getString("NAZWA_PLIKU")} style="width:350px;height:350px;"/>
+                    </p>
+                    <p>
+                      <img src="/img/like.png" style="width:25px;height:25px"/>{a.getInt("KEBAB")}<img src="/img/dislike.jpg" style="width:25px;height:25px"/>{a.getInt("BRUKSELKA")}
+                    </p>
+                  </center>
+                }}<center>
+                  {if (a.next() == true) {
+                    <form action="/kategoria">
+                      <input type="submit" value="Nastepna strona"/>
+                    </form>
+                  }}
+                </center>
+                </body>
+              </html>
+            }
+          }
+          } ~
+          (path("plik") & entity(as[Multipart.FormData]) &
+            formFields('Tytul.as[String], 'kategoria.as[String])) { (fileData, tytul, kategoria) => {
+            complete {
+              {
+                val fileName = processFile(fileData)
+               // println(fileName)
+                //val askd = baza.prepareStatement(
+                //  """insert into memes1(TYTUL,
+                //  |KATEGORIA, KEBAB, BRUKSELKA, NAZWA_PLIKU) values(?,?,0,0,?)""".stripMargin)
+               // askd.setString(1, tytul)
+               // askd.setString(2, kategoria)
+               // askd.setString(3, fileName)
+               // askd.executeUpdate()
+              }
+              HttpResponse(StatusCodes.OK, entity = s"File  successfully uploaded.")
+              //redirect("/", MovedPermanently)
+            }
+          }
+          }
       }
+  private def processFile(fileData: Multipart.FormData):String = {
+    var fileUploadName="4"
+    var optionFile:Option[FileOutputStream] = None
+    val length = fileData.parts.mapAsync(1) {
+      bodyPart =>
+        fileUploadName = bodyPart.filename.getOrElse("noname.jpg")
+        val filePath =  System.getProperty("user.home") + "/Pulpit/Scala/memes/src/main/resources/img/" + fileUploadName
+        optionFile = Some( new FileOutputStream(filePath))
+        def writeFileOnLocal(array: Array[Byte], byteString: ByteString): Array[Byte] = {
+          val byteArray: Array[Byte] = byteString.toArray
+          optionFile.foreach(_.write(byteArray))
+          array ++ byteArray
+        }
+        bodyPart.entity.dataBytes.runFold(Array[Byte]())(writeFileOnLocal)
+    }.runFold(0)(_ + _.length)
+    optionFile.foreach(_.close)
+    return fileUploadName
+  }
+
+
+
 
   Http().bindAndHandle(route, "localhost", 9000)
 }
